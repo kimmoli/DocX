@@ -40,6 +40,11 @@ namespace Xceed.Words.NET
     static internal XNamespace m = "http://schemas.openxmlformats.org/officeDocument/2006/math";
     static internal XNamespace customPropertiesSchema = "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties";
     static internal XNamespace customVTypesSchema = "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes";
+    static internal XNamespace corePropertiesSchema = "http://schemas.openxmlformats.org/package/2006/metadata/core-properties";
+    static internal XNamespace coreXsiSchema = "http://www.w3.org/2001/XMLSchema-instance";
+    static internal XNamespace coreDcmiSchema = "http://purl.org/dc/dcmitype/";
+    static internal XNamespace coreDctermsSchema = "http://purl.org/dc/terms/";
+    static internal XNamespace coreDcSchema = "http://purl.org/dc/elements/1.1/";
 
     static internal XNamespace wp = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing";
     static internal XNamespace a = "http://schemas.openxmlformats.org/drawingml/2006/main";
@@ -2365,7 +2370,9 @@ namespace Xceed.Words.NET
 
       // If this document does not contain a coreFilePropertyPart create one.)
       if( !_package.PartExists( new Uri( "/docProps/core.xml", UriKind.Relative ) ) )
-        throw new Exception( "Core properties part doesn't exist." );
+      {
+        HelperFunctions.CreateCorePropertiesPart(this);
+      }
 
       XDocument corePropDoc;
       var corePropPart = _package.GetPart( new Uri( "/docProps/core.xml", UriKind.Relative ) );
@@ -2392,7 +2399,8 @@ namespace Xceed.Words.NET
       {
         corePropDoc.Save( tw );
       }
-      DocX.UpdateCorePropertyValue( this, propertyLocalName, propertyValue );
+      /* Calling this messes up everything, so skip it.*/
+      /* DocX.UpdateCorePropertyValue( this, propertyLocalName, propertyValue ); */
     }
 
     /// <summary>

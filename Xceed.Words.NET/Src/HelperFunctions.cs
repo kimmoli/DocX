@@ -282,6 +282,32 @@ namespace Xceed.Words.NET
       return settingsPart;
     }
 
+    internal static void CreateCorePropertiesPart( DocX document )
+    {
+      var corePropertiesPart = document._package.CreatePart( new Uri( "/docProps/core.xml", UriKind.Relative ), "application/vnd.openxmlformats-package.core-properties+xml", CompressionOption.Maximum );
+
+      var corePropDoc = new XDocument
+      (
+          new XDeclaration( "1.0", "UTF-8", "yes" ),
+          new XElement
+          (
+              DocX.corePropertiesSchema + "coreProperties",
+              new XAttribute( XNamespace.Xmlns + "cp", DocX.corePropertiesSchema ),
+              new XAttribute( XNamespace.Xmlns + "xsi", DocX.coreXsiSchema ),
+              new XAttribute( XNamespace.Xmlns + "dcmitype", DocX.coreDcmiSchema ),
+              new XAttribute( XNamespace.Xmlns + "dcterms", DocX.coreDctermsSchema ),
+              new XAttribute( XNamespace.Xmlns + "dc", DocX.coreDcSchema)
+          )
+      );
+
+      using( TextWriter tw = new StreamWriter( new PackagePartStream( corePropertiesPart.GetStream( FileMode.Create, FileAccess.Write ) ) ) )
+      {
+        corePropDoc.Save( tw, SaveOptions.None );
+      }
+
+      document._package.CreateRelationship( corePropertiesPart.Uri, TargetMode.Internal, "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties");
+    }
+
     internal static void CreateCustomPropertiesPart( DocX document )
     {
       var customPropertiesPart = document._package.CreatePart( new Uri( "/docProps/custom.xml", UriKind.Relative ), "application/vnd.openxmlformats-officedocument.custom-properties+xml", CompressionOption.Maximum );
