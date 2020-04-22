@@ -3832,25 +3832,31 @@ namespace Xceed.Words.NET
     /// <seealso cref="InsertPageCount"/>
     public void AppendPageNumber( PageNumberFormat pnf )
     {
-      XElement fldSimple = new XElement( XName.Get( "fldSimple", DocX.w.NamespaceName ) );
+            List<XElement> newruns = new List<XElement>();
 
-      if( pnf == PageNumberFormat.normal )
-        fldSimple.Add( new XAttribute( XName.Get( "instr", DocX.w.NamespaceName ), @" PAGE   \* MERGEFORMAT " ) );
-      else
-        fldSimple.Add( new XAttribute( XName.Get( "instr", DocX.w.NamespaceName ), @" PAGE  \* ROMAN  \* MERGEFORMAT " ) );
+            XElement fieldBegin = new XElement(DocX.w + "fldChar");
+            fieldBegin.Add(new XAttribute(XName.Get("fldCharType", DocX.w.NamespaceName), @"begin"));
 
-      XElement content = XElement.Parse
-      (
-       @"<w:r w:rsidR='001D0226' xmlns:w=""http://schemas.openxmlformats.org/wordprocessingml/2006/main"">
-                   <w:rPr>
-                       <w:noProof /> 
-                   </w:rPr>
-                   <w:t>1</w:t> 
-               </w:r>"
-      );
+            newruns.Add(new XElement(DocX.w + "r", null, fieldBegin));
 
-      fldSimple.Add( content );
-      Xml.Add( fldSimple );
+            XElement field;
+            if (pnf == PageNumberFormat.normal)
+                field = new XElement(DocX.w + "instrText", @" PAGE   \* MERGEFORMAT ");
+            else
+                field = new XElement(DocX.w + "instrText", @" PAGE   \* ROMAN  \* MERGEFORMAT ");
+
+            Xceed.Words.NET.Text.PreserveSpace(field);
+
+            newruns.Add(new XElement(DocX.w + "r", null, field));
+
+            XElement fieldEnd = new XElement(DocX.w + "fldChar");
+            fieldEnd.Add(new XAttribute(XName.Get("fldCharType", DocX.w.NamespaceName), @"end"));
+
+            newruns.Add(new XElement(DocX.w + "r", null, fieldEnd));
+
+            Xml.Add(newruns);
+
+            _runs = Xml.Elements(XName.Get("r", DocX.w.NamespaceName)).Reverse().Take(newruns.Count()).ToList();
     }
 
     /// <summary>
@@ -3959,33 +3965,39 @@ namespace Xceed.Words.NET
     /// <seealso cref="InsertPageCount"/>
     public void AppendPageCount( PageNumberFormat pnf )
     {
-      XElement fldSimple = new XElement( XName.Get( "fldSimple", DocX.w.NamespaceName ) );
+            List<XElement> newruns = new List<XElement>();
 
-      if( pnf == PageNumberFormat.normal )
-        fldSimple.Add( new XAttribute( XName.Get( "instr", DocX.w.NamespaceName ), @" NUMPAGES   \* MERGEFORMAT " ) );
-      else
-        fldSimple.Add( new XAttribute( XName.Get( "instr", DocX.w.NamespaceName ), @" NUMPAGES  \* ROMAN  \* MERGEFORMAT " ) );
+            XElement fieldBegin = new XElement(DocX.w + "fldChar");
+            fieldBegin.Add(new XAttribute(XName.Get("fldCharType", DocX.w.NamespaceName), @"begin"));
 
-      XElement content = XElement.Parse
-      (
-       @"<w:r w:rsidR='001D0226' xmlns:w=""http://schemas.openxmlformats.org/wordprocessingml/2006/main"">
-                   <w:rPr>
-                       <w:noProof /> 
-                   </w:rPr>
-                   <w:t>1</w:t> 
-               </w:r>"
-      );
+            newruns.Add(new XElement(DocX.w + "r", null, fieldBegin));
 
-      fldSimple.Add( content );
-      Xml.Add( fldSimple );
-    }
+            XElement field;
+            if (pnf == PageNumberFormat.normal)
+                field = new XElement(DocX.w + "instrText", @" NUMPAGES   \* MERGEFORMAT ");
+            else
+                field = new XElement(DocX.w + "instrText", @" NUMPAGES   \* ROMAN  \* MERGEFORMAT ");
 
-    /// <summary>
-    /// Set the Line spacing for this paragraph manually.
-    /// </summary>
-    /// <param name="spacingType">The type of spacing to be set, can be either Before, After or Line (Standard line spacing).</param>
-    /// <param name="spacingFloat">A float value of the amount of spacing. Equals the value that will be set in Word using the "Line and Paragraph spacing" button.</param>
-    public void SetLineSpacing( LineSpacingType spacingType, float spacingFloat )
+            Xceed.Words.NET.Text.PreserveSpace(field);
+
+            newruns.Add(new XElement(DocX.w + "r", null, field));
+
+            XElement fieldEnd = new XElement(DocX.w + "fldChar");
+            fieldEnd.Add(new XAttribute(XName.Get("fldCharType", DocX.w.NamespaceName), @"end"));
+
+            newruns.Add(new XElement(DocX.w + "r", null, fieldEnd));
+
+            Xml.Add(newruns);
+
+            _runs = Xml.Elements(XName.Get("r", DocX.w.NamespaceName)).Reverse().Take(newruns.Count()).ToList();
+        }
+
+        /// <summary>
+        /// Set the Line spacing for this paragraph manually.
+        /// </summary>
+        /// <param name="spacingType">The type of spacing to be set, can be either Before, After or Line (Standard line spacing).</param>
+        /// <param name="spacingFloat">A float value of the amount of spacing. Equals the value that will be set in Word using the "Line and Paragraph spacing" button.</param>
+        public void SetLineSpacing( LineSpacingType spacingType, float spacingFloat )
     {
       var pPr = this.GetOrCreate_pPr();
       var spacingXName = XName.Get( "spacing", DocX.w.NamespaceName );
@@ -5064,8 +5076,8 @@ namespace Xceed.Words.NET
     public static void PreserveSpace( XElement e )
     {
       // PreserveSpace should only be used on (t or delText) elements
-      if( !e.Name.Equals( DocX.w + "t" ) && !e.Name.Equals( DocX.w + "delText" ) )
-        throw new ArgumentException( "SplitText can only split elements of type t or delText", "e" );
+      if( !e.Name.Equals( DocX.w + "t" ) && !e.Name.Equals( DocX.w + "delText" ) && !e.Name.Equals(DocX.w + "instrText"))
+        throw new ArgumentException("SplitText can only split elements of type t, delText or instrText", "e" );
 
       // Check if this w:t contains a space atribute
       XAttribute space = e.Attributes().Where( a => a.Name.Equals( XNamespace.Xml + "space" ) ).SingleOrDefault();
