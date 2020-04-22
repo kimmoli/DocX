@@ -41,6 +41,7 @@ namespace Xceed.Words.NET
     static internal XNamespace customPropertiesSchema = "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties";
     static internal XNamespace customVTypesSchema = "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes";
     static internal XNamespace corePropertiesSchema = "http://schemas.openxmlformats.org/package/2006/metadata/core-properties";
+    static internal XNamespace extendedPropertiesSchema = "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties";
     static internal XNamespace coreXsiSchema = "http://www.w3.org/2001/XMLSchema-instance";
     static internal XNamespace coreDcmiSchema = "http://purl.org/dc/dcmitype/";
     static internal XNamespace coreDctermsSchema = "http://purl.org/dc/terms/";
@@ -695,6 +696,32 @@ namespace Xceed.Words.NET
       }
     }
 
+    public Dictionary<string, CustomProperty> ExtendedProperties
+    {
+        get
+        {
+            if (_package.PartExists(new Uri("/docProps/app.xml", UriKind.Relative)))
+            {
+                PackagePart docProps_extended = _package.GetPart(new Uri("/docProps/app.xml", UriKind.Relative));
+                XDocument extendedPropDoc;
+                using (TextReader tr = new StreamReader(docProps_extended.GetStream(FileMode.Open, FileAccess.Read)))
+                    extendedPropDoc = XDocument.Load(tr, LoadOptions.PreserveWhitespace);
+
+                // Get all of the custom properties in this document
+                return
+                (
+                    from p in extendedPropDoc.Descendants(XName.Get("property", customPropertiesSchema.NamespaceName))
+                    let Name = p.Attribute(XName.Get("name")).Value
+                    let Type = p.Descendants().Single().Name.LocalName
+                    let Value = p.Descendants().Single().Value
+                    select new CustomProperty(Name, Type, Value)
+                ).ToDictionary(p => p.Name, StringComparer.CurrentCultureIgnoreCase);
+            }
+
+            return new Dictionary<string, CustomProperty>();
+        }
+    }
+
     /// <summary>
     /// Get the Text of this document.
     /// </summary>
@@ -953,8 +980,8 @@ namespace Xceed.Words.NET
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml",
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml",
-                "application/vnd.openxmlformats-package.core-properties+xml",
-                "application/vnd.openxmlformats-officedocument.extended-properties+xml",
+                /*"application/vnd.openxmlformats-package.core-properties+xml",*/
+                /*"application/vnd.openxmlformats-officedocument.extended-properties+xml",*/
                 ContentTypeApplicationRelationShipXml
             };
 
@@ -2402,6 +2429,48 @@ namespace Xceed.Words.NET
       /* Calling this messes up everything, so skip it.*/
       /* DocX.UpdateCorePropertyValue( this, propertyLocalName, propertyValue ); */
     }
+
+    public void AddExtendedProperty(string propertyName, string propertyValue)
+    {
+        var propertyNamespacePrefix = propertyName.Contains(":") ? propertyName.Split(':')[0] : "";
+        var propertyLocalName = propertyName.Contains(":") ? propertyName.Split(':')[1] : propertyName;
+
+        // If this document does not contain a extendedPropertyPart create one.)
+        if (!_package.PartExists(new Uri("/docProps/app.xml", UriKind.Relative)))
+        {
+            HelperFunctions.CreateExtendedPropertiesPart(this);
+        }
+
+        XDocument extendedPropDoc;
+        var extendedPropPart = _package.GetPart(new Uri("/docProps/app.xml", UriKind.Relative));
+        using (TextReader tr = new StreamReader(extendedPropPart.GetStream(FileMode.Open, FileAccess.Read)))
+        {
+            extendedPropDoc = XDocument.Load(tr);
+        }
+
+        var extendedPropElement =
+            (from propElement in extendedPropDoc.Root.Elements()
+            where (propElement.Name.LocalName.Equals(propertyLocalName))
+            select propElement).SingleOrDefault();
+        if (extendedPropElement != null)
+        {
+            extendedPropElement.SetValue(propertyValue);
+        }
+        else
+        {
+            var propertyNamespace = propertyNamespacePrefix != "" ? extendedPropDoc.Root.GetNamespaceOfPrefix(propertyNamespacePrefix) :
+                extendedPropDoc.Root.GetDefaultNamespace();
+            extendedPropDoc.Root.Add(new XElement(XName.Get(propertyLocalName, propertyNamespace.NamespaceName), propertyValue));
+        }
+
+        using (TextWriter tw = new StreamWriter(new PackagePartStream(extendedPropPart.GetStream(FileMode.Create, FileAccess.Write))))
+        {
+            extendedPropDoc.Save(tw);
+        }
+        /* Calling this messes up everything, so skip it.*/
+        /* DocX.UpdateCorePropertyValue( this, propertyLocalName, propertyValue ); */
+    }
+
 
     /// <summary>
     /// Add a custom property to this document. If a custom property already exists with the same name it will be replace. CustomProperty names are case insensitive.

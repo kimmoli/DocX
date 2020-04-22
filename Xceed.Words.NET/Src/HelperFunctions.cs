@@ -330,7 +330,29 @@ namespace Xceed.Words.NET
       document._package.CreateRelationship( customPropertiesPart.Uri, TargetMode.Internal, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" );
     }
 
-    internal static XDocument DecompressXMLResource( string manifest_resource_name )
+        internal static void CreateExtendedPropertiesPart(DocX document)
+        {
+            var extendedPropertiesPart = document._package.CreatePart(new Uri("/docProps/app.xml", UriKind.Relative), "application/vnd.openxmlformats-officedocument.extended-properties+xml", CompressionOption.Maximum);
+
+            var extendedPropDoc = new XDocument
+            (
+                new XDeclaration("1.0", "UTF-8", "yes"),
+                new XElement
+                (
+                    XName.Get("Properties", DocX.extendedPropertiesSchema.NamespaceName)
+                )
+            );
+
+            using (TextWriter tw = new StreamWriter(new PackagePartStream(extendedPropertiesPart.GetStream(FileMode.Create, FileAccess.Write))))
+            {
+                extendedPropDoc.Save(tw, SaveOptions.None);
+            }
+
+            document._package.CreateRelationship(extendedPropertiesPart.Uri, TargetMode.Internal, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties");
+        }
+
+
+        internal static XDocument DecompressXMLResource( string manifest_resource_name )
     {
       // XDocument to load the compressed Xml resource into.
       XDocument document;
